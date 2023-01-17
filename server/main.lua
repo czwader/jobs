@@ -39,8 +39,6 @@ ESX.RegisterServerCallback('jobs:getOtherPlayerData', function(source, cb, targe
 	end
 end)
 
-
-
 --TODO: NEZABEZPEČENÝ EVENTY!!!!
 
 RegisterNetEvent('jobs:handcuff')

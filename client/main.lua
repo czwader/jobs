@@ -1,27 +1,80 @@
 local handcuffTimer, dragStatus = {}, {}
 local isHandcuffed = false
+local markers = {}
+local rcore = exports.rcore
 
 RegisterNetEvent('esx:playerLoaded') 
 AddEventHandler('esx:playerLoaded', function(xPlayer)
 	ESX.PlayerData = xPlayer
 	ESX.PlayerLoaded = true
+	createMarker()
 end)
 
 RegisterNetEvent('esx:playerLogout') 
 AddEventHandler('esx:playerLogout', function(xPlayer)
 	ESX.PlayerLoaded = false
 	ESX.PlayerData = {}
+	destroyAllMarkers()
 end)
 
 RegisterNetEvent('esx:setJob')
 AddEventHandler('esx:setJob', function(job)
 	ESX.PlayerData.job = job
+	destroyAllMarkers()
+	if ESX.PlayerData.job.grade_name == "boss" then
+		Wait(1000)
+		createMarker()
+	end
 end)
 
 RegisterCommand("jobmenu", function()
 	OpenJobsActionsMenu()
 end)
 
+function createMarker()
+    for k,v in pairs(Config.bossMenu) do 
+		if k == ESX.PlayerData.job.name and ESX.PlayerData.job.grade_name == "boss" then
+			if markers[k] ~= nil then
+				pcall(markers[k].destroy)
+			end
+			local marker = rcore:createMarker(GetCurrentResourceName())
+			marker.render()
+			marker.setPosition(v.marker.pos)
+			marker.setType(v.marker.type)
+			marker.setColor(v.marker.color)
+			marker.setScale(v.marker.scale)
+			marker.setRotation(v.marker.rotation)
+			marker.setRenderDistance(v.marker.renderDist)
+			marker.setKeys({38,})
+			marker.setInRadius(v.marker.inRadius)
+			marker.on('enter',function()
+				ESX.ShowHelpNotification(v.marker.text)
+			end)
+
+			marker.on('key', function(pressed)
+				if pressed == 38 then
+					TriggerEvent('esx_society:openBossMenu', ESX.PlayerData.job.name, function(data, menu)
+						ESX.UI.Menu.CloseAll()	
+					end, { 
+						wash = v.allowedActions.canWash,
+						deposit = v.allowedActions.deposit,
+						grades = v.allowedActions.grades,
+						withdraw = v.allowedActions.withdraw,
+						employees = v.allowedActions.employees,
+					})
+				end
+			end)
+
+			markers[k] = marker
+		end
+    end
+end
+
+function destroyAllMarkers()
+    for k, marker in pairs(markers) do
+        marker.destroy()
+    end
+end
 
 function OpenJobsActionsMenu()
 	for k,v in pairs(Config.jobs) do 
