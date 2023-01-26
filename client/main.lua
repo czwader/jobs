@@ -1,7 +1,8 @@
 local handcuffTimer, dragStatus = {}, {}
+local isBusy = true
 local isHandcuffed = false
 local markers = {}
-local rcore = exports.rcore
+local rcore = exports.rcore_framework
 
 RegisterNetEvent('esx:playerLoaded') 
 AddEventHandler('esx:playerLoaded', function(xPlayer)
@@ -81,6 +82,7 @@ function OpenJobsActionsMenu()
 		
 		if v.allowJobs[ESX.PlayerData.job.name] then
 			ESX.UI.Menu.CloseAll()
+			print("TEST")
 			local elements = {}
 
 			if v.citizenActions then 
@@ -208,63 +210,57 @@ function OpenJobsActionsMenu()
 						local coords  = GetEntityCoords(playerPed)
 						vehicle = ESX.Game.GetVehicleInDirection()
 						action  = data2.current.value
-
-						if action == 'search_database' then
-							LookupVehicle()
-						elseif DoesEntityExist(vehicle) then
-							if action == 'vehicle_infos' then
+						if DoesEntityExist(vehicle) then
+							if action == 'search_database' then
+								LookupVehicle()
+							elseif action == 'vehicle_infos' then
 								local vehicleData = ESX.Game.GetVehicleProperties(vehicle)
 								OpenVehicleInfosMenu(vehicleData)
 							elseif action == 'hijack_vehicle' then
 								if IsAnyVehicleNearPoint(coords.x, coords.y, coords.z, 3.0) then
 									TaskStartScenarioInPlace(playerPed, 'WORLD_HUMAN_WELDING', 0, true)
-									Citizen.Wait(20000)
+									Citizen.Wait(5000)
 									ClearPedTasksImmediately(playerPed)
-
 									SetVehicleDoorsLocked(vehicle, 1)
 									SetVehicleDoorsLockedForAllPlayers(vehicle, false)
 									ESX.ShowNotification(_U('vehicle_unlocked'))
 								end
 							elseif action == 'impound' then
-								TaskStartScenarioInPlace(playerPed, 'CODE_HUMAN_MEDIC_TEND_TO_DEAD', 0, true)
-								CreateThread(function()
+								if isBusy then
+									TaskStartScenarioInPlace(playerPed, 'CODE_HUMAN_MEDIC_TEND_TO_DEAD', 0, true)
 									Wait(5000)
 									ClearPedTasksImmediately(playerPed)
 									ImpoundVehicle(vehicle)
-								end)
+
+								end
 								
 							elseif action == "fix_vehicle" then 
-
-								if IsPedSittingInAnyVehicle(playerPed) then
-									ESX.ShowNotification(_U('inside_vehicle'))
-									return
-								end
-					
-								
-								TaskStartScenarioInPlace(playerPed, 'PROP_HUMAN_BUM_BIN', 0, true)
-								CreateThread(function()
+								if isBusy then
+									isBusy = false
+									if IsPedSittingInAnyVehicle(playerPed) then
+										ESX.ShowNotification(_U('inside_vehicle'))
+										return
+									end
+						
+									TaskStartScenarioInPlace(playerPed, 'PROP_HUMAN_BUM_BIN', 0, true)
 									Wait(5000)
-				
 									SetVehicleFixed(vehicle)
 									SetVehicleDeformationFixed(vehicle)
 									SetVehicleUndriveable(vehicle, false)
 									SetVehicleEngineOn(vehicle, true, true)
 									ClearPedTasksImmediately(playerPed)
-				
+									isBusy = true
 									ESX.ShowNotification(_U('vehicle_repaired'))
-								end)
+								end
 								
 							elseif action == "clean_vehicle" then 
-								TaskStartScenarioInPlace(playerPed, 'PROP_HUMAN_BUM_BIN', 0, true)
-								CreateThread(function()
-									Wait(5000)
-				
-									SetVehicleDirtLevel(vehicle, 0)
-									ClearPedTasksImmediately(playerPed)
-				
-									ESX.ShowNotification(_U('vehicle_cleaned'))
-								end)
+								TaskStartScenarioInPlace(playerPed, 'WORLD_HUMAN_MAID_CLEAN', 0, true)
+								Wait(5000)
+								SetVehicleDirtLevel(vehicle, 0)
+								ClearPedTasksImmediately(playerPed)
+								ESX.ShowNotification(_U('vehicle_cleaned'))
 							end
+							
 						else
 							ESX.ShowNotification(_U('no_vehicles_nearby'))
 						end
