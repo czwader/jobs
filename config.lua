@@ -79,7 +79,11 @@ Config.jobs ={
             vehicleInfo = true,
             pickLock = true,
             impound = true,
+            repair = true,
+            clean = true
         },
+
+        objectActions = true
     },
     ["legal"] = {
         allowJobs = {
@@ -102,7 +106,11 @@ Config.jobs ={
             vehicleInfo = true,
             pickLock = true,
             impound = true,
+            repair = true,
+            clean = true
         },
+
+        objectActions = true
     },
 }
 

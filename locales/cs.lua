@@ -89,14 +89,17 @@ Locales['cs'] = {
   -- Vehicle interaction
   ['vehicle_info'] = 'informace o vozidle',
   ['pick_lock'] = 'vypáčit vozidlo',
+  ['clean'] = 'umýt vozidlo',
   ['vehicle_unlocked'] = 'vozidlo je ~g~Odemčeno~s~',
+  ['vehicle_repaired'] = 'vozidlo je ~g~opraveno~s~',
+  ['vehicle_cleaned'] = 'vozidlo je ~g~umyto~s~',
   ['no_vehicles_nearby'] = 'there is no vehicles nearby',
   ['impound'] = 'odtahnout vozidlo',
-  ['impound_prompt'] = 'zmackni ~INPUT_CONTEXT~ pro zruseni ~y~odtahnuti~s~',
   ['impound_canceled'] = 'zrusil jsi odtah',
   ['impound_canceled_moved'] = 'odtah byl zrusen,protoze se vozidlo pohlo!',
   ['impound_successful'] = 'uspesne jsi odtahl vozidlo',
   ['search_database'] = 'informace o  vozidle',
+  ['repair'] = 'opravit vozidlo',
   ['search_database_title'] = 'informace o vozidle - pomocí registracnich cisel',
   ['search_database_error_invalid'] = 'tohle ~r~neni~s~  ~y~spravne~s~ registracni cislo',
   -- Traffic interaction

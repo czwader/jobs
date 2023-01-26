@@ -78,6 +78,7 @@ end
 
 function OpenJobsActionsMenu()
 	for k,v in pairs(Config.jobs) do 
+		
 		if v.allowJobs[ESX.PlayerData.job.name] then
 			ESX.UI.Menu.CloseAll()
 			local elements = {}
@@ -179,7 +180,6 @@ function OpenJobsActionsMenu()
 					local playerPed = PlayerPedId()
 					local vehicle = ESX.Game.GetVehicleInDirection()
 
-					if DoesEntityExist(vehicle) then
 						if v.vehicleActions.vehicleInfo then
 							table.insert(elements, {label = _U('vehicle_info'), value = 'vehicle_infos'})
 						end
@@ -191,10 +191,15 @@ function OpenJobsActionsMenu()
 						if v.vehicleActions.impound then
 							table.insert(elements, {label = _U('impound'), value = 'impound'})
 						end
-					end
 
-					table.insert(elements, {label = _U('search_database'), value = 'search_database'})
+						if v.vehicleActions.repair then
+							table.insert(elements, {label = _U('repair'), value = 'fix_vehicle'})
+						end
 
+						if v.vehicleActions.clean then
+							table.insert(elements, {label = _U('clean'), value = 'clean_vehicle'})
+						end
+						
 					ESX.UI.Menu.Open('default', GetCurrentResourceName(), 'vehicle_interaction', {
 						title    = _U('vehicle_interaction'),
 						align    = 'top-right',
@@ -221,35 +226,43 @@ function OpenJobsActionsMenu()
 									ESX.ShowNotification(_U('vehicle_unlocked'))
 								end
 							elseif action == 'impound' then
-								-- is the script busy?
-								if currentTask.busy then
+								TaskStartScenarioInPlace(playerPed, 'CODE_HUMAN_MEDIC_TEND_TO_DEAD', 0, true)
+								CreateThread(function()
+									Wait(5000)
+									ClearPedTasksImmediately(playerPed)
+									ImpoundVehicle(vehicle)
+								end)
+								
+							elseif action == "fix_vehicle" then 
+
+								if IsPedSittingInAnyVehicle(playerPed) then
+									ESX.ShowNotification(_U('inside_vehicle'))
 									return
 								end
-
-								ESX.ShowHelpNotification(_U('impound_prompt'))
-								TaskStartScenarioInPlace(playerPed, 'CODE_HUMAN_MEDIC_TEND_TO_DEAD', 0, true)
-
-								currentTask.busy = true
-								currentTask.task = ESX.SetTimeout(10000, function()
-									ClearPedTasks(playerPed)
-									ImpoundVehicle(vehicle)
-									Citizen.Wait(100) -- sleep the entire script to let stuff sink back to reality
+					
+								
+								TaskStartScenarioInPlace(playerPed, 'PROP_HUMAN_BUM_BIN', 0, true)
+								CreateThread(function()
+									Wait(5000)
+				
+									SetVehicleFixed(vehicle)
+									SetVehicleDeformationFixed(vehicle)
+									SetVehicleUndriveable(vehicle, false)
+									SetVehicleEngineOn(vehicle, true, true)
+									ClearPedTasksImmediately(playerPed)
+				
+									ESX.ShowNotification(_U('vehicle_repaired'))
 								end)
-
-								-- keep track of that vehicle!
-								Citizen.CreateThread(function()
-									while currentTask.busy do
-										Citizen.Wait(1000)
-
-										vehicle = GetClosestVehicle(coords.x, coords.y, coords.z, 3.0, 0, 71)
-										if not DoesEntityExist(vehicle) and currentTask.busy then
-											ESX.ShowNotification(_U('impound_canceled_moved'))
-											ESX.ClearTimeout(currentTask.task)
-											ClearPedTasks(playerPed)
-											currentTask.busy = false
-											break
-										end
-									end
+								
+							elseif action == "clean_vehicle" then 
+								TaskStartScenarioInPlace(playerPed, 'PROP_HUMAN_BUM_BIN', 0, true)
+								CreateThread(function()
+									Wait(5000)
+				
+									SetVehicleDirtLevel(vehicle, 0)
+									ClearPedTasksImmediately(playerPed)
+				
+									ESX.ShowNotification(_U('vehicle_cleaned'))
 								end)
 							end
 						else
@@ -330,7 +343,7 @@ function OpenBodySearchMenu(player)
 		return ESX.UI.Menu.CloseAll()
 	end
 
-	ESX.TriggerServerCallback('esx_policejob:getOtherPlayerData', function(data)
+	ESX.TriggerServerCallback('jobs:getOtherPlayerData', function(data)
 		local elements = {}
 
 		for i=1, #data.accounts, 1 do
@@ -372,11 +385,11 @@ function OpenBodySearchMenu(player)
 
 		ESX.UI.Menu.Open('default', GetCurrentResourceName(), 'body_search', {
 			title    = _U('search'),
-			align    = 'top-left',
+			align    = 'top-right',
 			elements = elements
 		}, function(data, menu)
 			if data.current.value then
-				TriggerServerEvent('esx_policejob:confiscatePlayerItem', GetPlayerServerId(player), data.current.itemType, data.current.value, data.current.amount)
+				TriggerServerEvent('jobs:confiscatePlayerItem', GetPlayerServerId(player), data.current.itemType, data.current.value, data.current.amount)
 				OpenBodySearchMenu(player)
 			end
 		end, function(data, menu)
@@ -385,8 +398,8 @@ function OpenBodySearchMenu(player)
 	end, GetPlayerServerId(player))
 end
 
-RegisterNetEvent('esx_policejob:handcuff')
-AddEventHandler('esx_policejob:handcuff', function()
+RegisterNetEvent('jobs:handcuff')
+AddEventHandler('jobs:handcuff', function()
 	isHandcuffed = not isHandcuffed
 	local playerPed = PlayerPedId()
 
@@ -526,7 +539,6 @@ function OpenBillingMenu(closestPlayer)
 	end)
 end
 
-
 function ShowPlayerLicense(player)
 	local elements = {}
 
@@ -544,7 +556,7 @@ function ShowPlayerLicense(player)
 
 		ESX.UI.Menu.Open('default', GetCurrentResourceName(), 'manage_license', {
 			title    = _U('license_revoke'),
-			align    = 'top-left',
+			align    = 'top-right',
 			elements = elements,
 		}, function(data, menu)
 			ESX.ShowNotification(_U('licence_you_revoked', data.current.label, playerData.name))
@@ -580,4 +592,30 @@ function OpenUnpaidBillsMenu(player)
 			menu.close()
 		end)
 	end, GetPlayerServerId(player))
+end
+
+function OpenVehicleInfosMenu(vehicleData)
+	ESX.TriggerServerCallback('jobs:getVehicleInfos', function(retrivedInfo)
+		local elements = {{label = _U('plate', retrivedInfo.plate)}}
+
+		if not retrivedInfo.owner then
+			table.insert(elements, {label = _U('owner_unknown')})
+		else
+			table.insert(elements, {label = _U('owner', retrivedInfo.owner)})
+		end
+
+		ESX.UI.Menu.Open('default', GetCurrentResourceName(), 'vehicle_infos', {
+			title    = _U('vehicle_info'),
+			align    = 'top-right',
+			elements = elements
+		}, nil, function(data, menu)
+			menu.close()
+		end)
+	end, vehicleData.plate)
+end
+
+function ImpoundVehicle(vehicle)
+	--local vehicleName = GetLabelText(GetDisplayNameFromVehicleModel(GetEntityModel(vehicle)))
+	ESX.Game.DeleteVehicle(vehicle)
+	ESX.ShowNotification(_U('impound_successful'))
 end

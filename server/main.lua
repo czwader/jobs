@@ -39,48 +39,72 @@ ESX.RegisterServerCallback('jobs:getOtherPlayerData', function(source, cb, targe
 	end
 end)
 
---TODO: NEZABEZPEČENÝ EVENTY!!!!
+ESX.RegisterServerCallback('jobs:getVehicleInfos', function(source, cb, plate)
+	local retrivedInfo = {
+		plate = plate
+	}
+	if Config.EnableESXIdentity then
+		MySQL.single('SELECT users.firstname, users.lastname FROM owned_vehicles JOIN users ON owned_vehicles.owner = users.identifier WHERE plate = ?', {plate},
+		function(result)
+			if result then
+				retrivedInfo.owner = ('%s %s'):format(result.firstname, result.lastname)
+			end
+			cb(retrivedInfo)
+		end)
+	else
+		MySQL.scalar('SELECT owner FROM owned_vehicles WHERE plate = ?', {plate},
+		function(owner)
+			if owner then
+				local xPlayer = ESX.GetPlayerFromIdentifier(owner)
+				if xPlayer then
+					retrivedInfo.owner = xPlayer.getName()
+				end
+			end
+			cb(retrivedInfo)
+		end)
+	end
+end)
 
 RegisterNetEvent('jobs:handcuff')
 AddEventHandler('jobs:handcuff', function(target)
-	local xPlayer = ESX.GetPlayerFromId(source)
-
-	-- if xPlayer.job.name == 'police' then
-		TriggerClientEvent('esx_policejob:handcuff', target) 
-	-- else
-	-- 	print(('esx_policejob: %s attempted to handcuff a player (not job)!'):format(xPlayer.identifier))
-	-- end
+	local src = source
+	if twoPlayersDistance(src, target)  then 
+		TriggerClientEvent('jobs:handcuff', target) 
+	end
 end)
 
 RegisterNetEvent('jobs:drag')
 AddEventHandler('jobs:drag', function(target)
-	local xPlayer = ESX.GetPlayerFromId(source)
-
-	-- if xPlayer.job.name == 'police' then
+	local src = source
+	if twoPlayersDistance(src, target)  then 
 		TriggerClientEvent('jobs:drag', target, source) 
-	-- else
-	-- 	print(('esx_policejob: %s attempted to drag (not cop)!'):format(xPlayer.identifier))
-	-- end
+	end
 end)
 
 RegisterNetEvent('jobs:putInVehicle')
 AddEventHandler('jobs:putInVehicle', function(target)
-	local xPlayer = ESX.GetPlayerFromId(source)
-
-	-- if xPlayer.job.name == 'police' then
+	local src = source
+	if twoPlayersDistance(src, target)  then 
 		TriggerClientEvent('jobs:putInVehicle', target)
-	-- else
-	-- 	print(('esx_policejob: %s attempted to put in vehicle (not cop)!'):format(xPlayer.identifier))
-	-- end
+	end
 end)
 
 RegisterNetEvent('jobs:OutVehicle')
 AddEventHandler('jobs:OutVehicle', function(target)
-	local xPlayer = ESX.GetPlayerFromId(source)
-
-	-- if xPlayer.job.name == 'police' then
+	local src = source
+	if twoPlayersDistance(src, target)  then 
 		TriggerClientEvent('jobs:OutVehicle', target)
-	-- else
-	-- 	print(('esx_policejob: %s attempted to drag out from vehicle (not cop)!'):format(xPlayer.identifier))
-	-- end
+	end
 end)
+
+function twoPlayersDistance(ped, target)
+    local ped = GetPlayerPed(ped) 
+	local targetPed = GetPlayerPed(target)
+    local coordsPed = GetEntityCoords(ped) 
+	local coordsTarget = GetEntityCoords(targetPed)
+	local distance = #(coordsPed - coordsTarget) 
+	if distance < 10 then
+		return true 
+	end
+    return false
+end
